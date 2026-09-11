@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Circle, Polygon, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { Video } from 'lucide-react';
+import { Video, AlertTriangle } from 'lucide-react';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -156,7 +156,7 @@ export function MapDashboard({
           );
         })}
 
-        {/* 3. Camera Point Markers (30 Real Sentinel Streams Rendered as White Pins) */}
+        {/* 3. Camera Point Markers */}
         {geoData?.features?.map((feature) => {
           const coords = feature.geometry?.coordinates;
           if (!coords || coords.length < 2) return null;
@@ -167,6 +167,7 @@ export function MapDashboard({
           const p = feature.properties;
           const isSelected = selectedCamera?.properties?.camera_id === p.camera_id;
           const isSentinel = p.is_sentinel_live;
+          const isOffline = p.connectivity_status === 'offline';
           const markerColor = getMarkerColor(p, showAgeingAlerts);
 
           return (
@@ -185,7 +186,7 @@ export function MapDashboard({
               }}
             >
               <Popup>
-                <div style={{ fontSize: '12px', minWidth: '220px', fontFamily: 'sans-serif' }}>
+                <div style={{ fontSize: '12px', minWidth: '230px', fontFamily: 'sans-serif' }}>
                   {isSentinel && (
                     <div style={{
                       display: 'inline-block',
@@ -202,6 +203,22 @@ export function MapDashboard({
                     </div>
                   )}
 
+                  {isOffline && (
+                    <div style={{
+                      display: 'inline-block',
+                      backgroundColor: '#fef2f2',
+                      color: '#dc2626',
+                      border: '1px solid #fecaca',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      fontSize: '10px',
+                      fontWeight: '700',
+                      marginBottom: '4px'
+                    }}>
+                      ⛔ CONNECTION REFUSED: ASSET OFFLINE
+                    </div>
+                  )}
+
                   <div style={{ fontWeight: '700', color: '#0f172a', fontSize: '13px', marginBottom: '2px' }}>
                     {p.name}
                   </div>
@@ -210,7 +227,7 @@ export function MapDashboard({
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', fontSize: '11px', backgroundColor: '#f8fafc', padding: '6px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
-                    <div><strong>Status:</strong> <span style={{ color: isSentinel ? '#2563eb' : markerColor, fontWeight: '700' }}>{p.connectivity_status}</span></div>
+                    <div><strong>Status:</strong> <span style={{ color: isOffline ? '#dc2626' : markerColor, fontWeight: '700' }}>{p.connectivity_status}</span></div>
                     <div><strong>VMS:</strong> {p.vms_vendor_id}</div>
                     <div><strong>Type:</strong> {p.camera_type}</div>
                     <div><strong>Age:</strong> {p.age_years || '1.5'} yr</div>
@@ -234,28 +251,52 @@ export function MapDashboard({
                       Model 3 Specs
                     </button>
 
-                    <button
-                      onClick={() => onOpenLiveStream(feature)}
-                      style={{
-                        flex: 1.2,
-                        backgroundColor: '#2563eb',
-                        color: '#ffffff',
-                        border: 'none',
-                        borderRadius: '4px',
-                        padding: '6px 8px',
-                        fontSize: '11px',
-                        fontWeight: '700',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '4px',
-                        boxShadow: '0 1px 3px rgba(37, 99, 235, 0.3)'
-                      }}
-                    >
-                      <Video size={12} color="#ffffff" />
-                      Live Stream
-                    </button>
+                    {isOffline ? (
+                      <button
+                        disabled
+                        title="Live streaming is disabled because this camera is physically offline"
+                        style={{
+                          flex: 1.2,
+                          backgroundColor: '#f1f5f9',
+                          color: '#94a3b8',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '4px',
+                          padding: '6px 8px',
+                          fontSize: '11px',
+                          fontWeight: '700',
+                          cursor: 'not-allowed',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        ⛔ Stream Offline
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => onOpenLiveStream(feature)}
+                        style={{
+                          flex: 1.2,
+                          backgroundColor: '#2563eb',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '4px',
+                          padding: '6px 8px',
+                          fontSize: '11px',
+                          fontWeight: '700',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '4px',
+                          boxShadow: '0 1px 3px rgba(37, 99, 235, 0.3)'
+                        }}
+                      >
+                        <Video size={12} color="#ffffff" />
+                        Live Stream
+                      </button>
+                    )}
                   </div>
                 </div>
               </Popup>
@@ -290,11 +331,11 @@ export function MapDashboard({
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#10b981' }} />
-            <span>Online Asset</span>
+            <span>Online Asset (Live Stream Available)</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#ef4444' }} />
-            <span>Offline Asset</span>
+            <span>Offline Asset (Stream Disabled)</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#f59e0b' }} />

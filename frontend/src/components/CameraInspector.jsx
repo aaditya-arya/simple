@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Video, Cpu, MapPin, Layers, ShieldCheck, AlertOctagon, Radio, Globe } from 'lucide-react';
+import { X, Video, Cpu, MapPin, Layers, ShieldCheck, AlertOctagon, Radio, Globe, AlertTriangle, ShieldX } from 'lucide-react';
 
 export function CameraInspector({ camera, onClose, onOpenLiveStream }) {
   if (!camera) return null;
@@ -7,6 +7,7 @@ export function CameraInspector({ camera, onClose, onOpenLiveStream }) {
   const p = camera.properties;
   const coords = camera.geometry.coordinates;
   const isOnline = p.connectivity_status === 'online';
+  const isOffline = p.connectivity_status === 'offline';
   const isAgeing = p.age_years && p.age_years >= 5.0;
   const isSentinel = p.is_sentinel_live;
 
@@ -37,10 +38,10 @@ export function CameraInspector({ camera, onClose, onOpenLiveStream }) {
               width: '8px',
               height: '8px',
               borderRadius: '50%',
-              backgroundColor: isOnline ? '#10b981' : '#ef4444',
-              boxShadow: isOnline ? '0 0 6px #10b981' : '0 0 6px #ef4444'
+              backgroundColor: isOnline ? '#10b981' : isOffline ? '#ef4444' : '#f59e0b',
+              boxShadow: isOnline ? '0 0 6px #10b981' : isOffline ? '0 0 6px #ef4444' : '0 0 6px #f59e0b'
             }} />
-            <span style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', color: isOnline ? '#059669' : '#dc2626' }}>
+            <span style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', color: isOnline ? '#059669' : isOffline ? '#dc2626' : '#b45309' }}>
               {p.connectivity_status} • {p.operational_status}
             </span>
 
@@ -83,28 +84,48 @@ export function CameraInspector({ camera, onClose, onOpenLiveStream }) {
 
       <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
         
-        {/* On-Demand Live Stream Launch Button */}
-        <button
-          onClick={() => onOpenLiveStream(camera)}
-          style={{
-            backgroundColor: '#2563eb',
-            color: '#ffffff',
-            border: 'none',
+        {/* On-Demand Live Stream Launch Button / Offline Refusal State */}
+        {isOffline ? (
+          <div style={{
+            backgroundColor: '#fef2f2',
+            border: '1px solid #fecaca',
             borderRadius: '8px',
-            padding: '10px 14px',
-            fontSize: '13px',
-            fontWeight: '700',
-            cursor: 'pointer',
+            padding: '12px',
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-            boxShadow: '0 2px 8px rgba(37, 99, 235, 0.35)'
-          }}
-        >
-          <Video size={16} color="#ffffff" />
-          🎥 Open Single Live Stream Player
-        </button>
+            flexDirection: 'column',
+            gap: '6px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#b91c1c', fontWeight: '700', fontSize: '12px' }}>
+              <ShieldX size={16} />
+              Connection Refused: Asset Offline
+            </div>
+            <div style={{ fontSize: '11px', color: '#7f1d1d' }}>
+              This physical CCTV unit is unreachable on the network switch. Live RTSP / HLS video streaming is disabled until telemetry reconnects.
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => onOpenLiveStream(camera)}
+            style={{
+              backgroundColor: '#2563eb',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '10px 14px',
+              fontSize: '13px',
+              fontWeight: '700',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              boxShadow: '0 2px 8px rgba(37, 99, 235, 0.35)'
+            }}
+          >
+            <Video size={16} color="#ffffff" />
+            🎥 Open Live Stream Player (Model 3)
+          </button>
+        )}
 
         {/* Real Sentinel Sandbox Integration Card (if Sentinel camera) */}
         {isSentinel && (

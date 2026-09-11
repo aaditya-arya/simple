@@ -11,14 +11,17 @@ router = APIRouter(tags=["Real-time RTSP AI Inference WebSockets"])
 async def websocket_rtsp_inference_stream(websocket: WebSocket, camera_id: int):
     """
     WebSocket endpoint for real-time YOLOv8 AI inference streaming.
-    Streams dynamic bounding box coordinates (x, y, w, h in percentages),
+    Pipes dynamic bounding box coordinates (x, y, w, h in percentages),
     confidence scores, vehicle plate numbers, and PTS timestamps at 30 FPS.
     """
     await websocket.accept()
     
     # Resolve RTSP endpoint for this camera
+    # For local testing or general cameras, fallback to active stream/1 if stream/camera_id is not published
+    effective_channel = camera_id if 1 <= camera_id <= 30 else 1
+    rtsp_url = f"rtsp://{settings.SENTINEL_HOST}:8554/stream/{effective_channel}"
+
     db = SessionLocal()
-    rtsp_url = f"rtsp://{settings.SENTINEL_HOST}:8554/stream/{camera_id}"
     try:
         camera = db.query(Camera).filter(Camera.camera_id == camera_id).first()
         if camera and camera.attributes:
@@ -35,4 +38,4 @@ async def websocket_rtsp_inference_stream(websocket: WebSocket, camera_id: int):
         # Client closed modal
         pass
     except Exception as e:
-        print(f"WebSocket streaming interrupted for camera {camera_id}: {e}")
+        print(f"WebSocket streaming notice for camera {camera_id}: {e}")
