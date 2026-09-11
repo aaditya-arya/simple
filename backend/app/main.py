@@ -1,4 +1,6 @@
+import os
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.routers import (
@@ -34,6 +36,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount videos folder if present for offline/demo playback
+videos_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "videos")
+if not os.path.exists(videos_dir):
+    # Check project root
+    videos_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "videos")
+
+if os.path.exists(videos_dir):
+    app.mount("/videos", StaticFiles(directory=videos_dir), name="videos")
 
 # Register API & WebSocket Routers
 app.include_router(auth_router, prefix=settings.API_V1_STR)
