@@ -25,3 +25,9 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+# MediaMTX & Certificates
+mediamtx/*.exe
+*.crt
+*.key
+

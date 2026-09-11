@@ -272,7 +272,7 @@ class RTSPInferenceEngine:
                 "latency_ms": inference_latency_ms,
                 "detections_count": len(detections),
                 "detections": detections,
-                "stream_alive": is_connected or True,
+                "stream_alive": is_connected,
                 "target_detected": any(d.get("is_target") for d in detections)
             }
 

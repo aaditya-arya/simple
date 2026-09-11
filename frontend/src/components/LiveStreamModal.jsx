@@ -3,13 +3,12 @@ import Hls from 'hls.js';
 import { X, Play, Pause, Video, Radio, Shield, AlertCircle, RefreshCw, Layers, Cpu, Activity } from 'lucide-react';
 
 export function LiveStreamModal({ camera, isOpen, onClose }) {
-  if (!isOpen || !camera) return null;
-
-  const p = camera.properties;
+  const p = camera?.properties || {};
   const isSentinel = p.is_sentinel_live;
   const videoRef = useRef(null);
   const hlsRef = useRef(null);
   const wsRef = useRef(null);
+  const wsRetryRef = useRef(null);
 
   // Host configuration state
   const defaultHost = window.location.hostname === 'localhost' ? 'localhost' : window.location.hostname;
@@ -25,9 +24,11 @@ export function LiveStreamModal({ camera, isOpen, onClose }) {
   const [currentPts, setCurrentPts] = useState(14280);
 
   const cameraId = p.sentinel_id || p.camera_id || 1;
-  const hlsUrl = p.sentinel_hls_url 
-    ? p.sentinel_hls_url.replace('sentinel-grid.internal', sandboxHost)
-    : `http://${sandboxHost}/live/stream/${cameraId}/index.m3u8`;
+  const hlsUrl = sandboxHost === 'localhost'
+    ? `http://localhost:8888/stream/${cameraId}/index.m3u8`
+    : p.sentinel_hls_url
+      ? p.sentinel_hls_url.replace('sentinel-grid.internal', sandboxHost)
+      : `http://${sandboxHost}:8888/stream/${cameraId}/index.m3u8`;
 
   const rtspUrl = p.sentinel_rtsp_url
     ? p.sentinel_rtsp_url.replace('sentinel-grid.internal', sandboxHost)
@@ -85,6 +86,7 @@ export function LiveStreamModal({ camera, isOpen, onClose }) {
               hls.recoverMediaError();
               break;
             default:
+              setStreamStatus('error');
               hls.destroy();
               break;
           }
@@ -112,48 +114,62 @@ export function LiveStreamModal({ camera, isOpen, onClose }) {
   useEffect(() => {
     if (!isOpen) return;
 
-    const wsUrl = `ws://${sandboxHost === 'localhost' ? '127.0.0.1' : sandboxHost}:8000/api/v1/ws/inference/${cameraId}`;
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const wsHost = sandboxHost === 'localhost' ? '127.0.0.1' : sandboxHost;
+    const wsUrl = `${wsProtocol}://${wsHost}:8000/api/v1/ws/inference/${cameraId}`;
+    let stopped = false;
+    let retryDelay = 1000;
 
-    ws.onopen = () => {
-      setWsConnected(true);
-      console.log(`🔌 Connected to YOLOv8 Inference WebSocket for Cam #${cameraId}`);
-    };
+    const connect = () => {
+      if (stopped) return;
 
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.detections) {
-          setDetections(data.detections);
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        setWsConnected(true);
+        retryDelay = 1000;
+        console.log(`Connected to YOLOv8 Inference WebSocket for Cam #${cameraId}`);
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.detections) setDetections(data.detections);
+          if (data.pts_ms) setCurrentPts(data.pts_ms);
+          if (data.fps) setLiveFps(data.fps);
+        } catch (err) {
+          console.warn("WebSocket parse error:", err);
         }
-        if (data.pts_ms) {
-          setCurrentPts(data.pts_ms);
+      };
+
+      ws.onclose = () => {
+        setWsConnected(false);
+        if (!stopped) {
+          wsRetryRef.current = window.setTimeout(connect, retryDelay);
+          retryDelay = Math.min(retryDelay * 2, 5000);
         }
-        if (data.fps) {
-          setLiveFps(data.fps);
-        }
-      } catch (err) {
-        console.warn("WebSocket parse error:", err);
-      }
+      };
+
+      ws.onerror = (err) => {
+        console.warn("WebSocket stream notice:", err);
+        setWsConnected(false);
+      };
     };
 
-    ws.onclose = () => {
-      setWsConnected(false);
-    };
-
-    ws.onerror = (err) => {
-      console.warn("WebSocket stream notice:", err);
-      setWsConnected(false);
-    };
+    connect();
 
     return () => {
+      stopped = true;
+      if (wsRetryRef.current) window.clearTimeout(wsRetryRef.current);
       if (wsRef.current) {
         wsRef.current.close();
         wsRef.current = null;
       }
     };
   }, [cameraId, sandboxHost, isOpen]);
+
+  if (!isOpen || !camera) return null;
 
   const togglePlay = () => {
     const video = videoRef.current;
@@ -371,7 +387,7 @@ export function LiveStreamModal({ camera, isOpen, onClose }) {
             </div>
 
             {/* Stream Connecting State */}
-            {streamStatus === 'connecting' && (
+            {(streamStatus === 'connecting' || streamStatus === 'error') && (
               <div style={{
                 position: 'absolute',
                 inset: 0,
@@ -384,10 +400,19 @@ export function LiveStreamModal({ camera, isOpen, onClose }) {
                 gap: '8px',
                 zIndex: 5
               }}>
-                <RefreshCw size={24} color="#3b82f6" style={{ animation: 'spin 1.5s linear infinite' }} />
+                {streamStatus === 'connecting' ? (
+                  <RefreshCw size={24} color="#3b82f6" style={{ animation: 'spin 1.5s linear infinite' }} />
+                ) : (
+                  <AlertCircle size={24} color="#f59e0b" />
+                )}
                 <span style={{ fontSize: '12px', fontWeight: '600' }}>
-                  Attaching HLS Stream: {hlsUrl}
+                  {streamStatus === 'connecting' ? `Attaching HLS Stream: ${hlsUrl}` : 'No video signal from the HLS gateway'}
                 </span>
+                {streamStatus === 'error' && (
+                  <span style={{ fontSize: '11px', color: '#cbd5e1', textAlign: 'center', maxWidth: '80%' }}>
+                    AI telemetry is still shown when the WebSocket is connected.
+                  </span>
+                )}
               </div>
             )}
 
