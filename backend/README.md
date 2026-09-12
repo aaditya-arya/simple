@@ -110,9 +110,9 @@ Default accounts created:
 
 ### 6. Run the API Server
 ```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8005
 ```
-Interactive Swagger API docs will be available at: **`http://localhost:8000/docs`**
+Interactive Swagger API docs will be available at: **`http://localhost:8005/docs`**
 
 ---
 
@@ -129,7 +129,7 @@ export function CCTVMap() {
   const [geoData, setGeoData] = useState(null);
 
   useEffect(() => {
-    fetch('http://localhost:8000/api/v1/gis/geojson', {
+    fetch('http://localhost:8005/api/v1/gis/geojson', {
       headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
     })
       .then(res => res.json())

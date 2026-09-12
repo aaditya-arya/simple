@@ -16,10 +16,11 @@ To launch the entire platform (MediaMTX RTSP Server + Continuous Video Publisher
 python run_all.py
 ```
 
-- **Dashboard UI**: `http://localhost:5173` (opens automatically in browser)
-- **FastAPI Docs**: `http://localhost:8000/docs`
+- **Dashboard UI**: `http://localhost:5180` (opens automatically in browser)
+- **FastAPI Docs**: `http://localhost:8005/docs`
 - **RTSP Stream**: `rtsp://127.0.0.1:8554/stream/1`
 - **HLS Web Stream**: `http://127.0.0.1:8888/stream/1/index.m3u8`
+- **WebSocket AI Stream**: `ws://127.0.0.1:8005/api/v1/ws/inference/{camera_id}`
 - **Verification Suite**: `.\verify_pipeline.bat` (validates RTSP ingestion & YOLOv8 bounding boxes)
 - **Stop All Services**: Press `Ctrl+C` in the launcher terminal or run `.\stop_all.bat`
 

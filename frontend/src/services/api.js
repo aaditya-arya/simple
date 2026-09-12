@@ -1,5 +1,6 @@
 // API Client for Statewide CCTV Central Registry & Sentinel Sandbox Integration
-const API_BASE_URL = "http://localhost:8000/api/v1";
+const API_PORT = import.meta.env.VITE_API_PORT || "8005";
+const API_BASE_URL = `http://localhost:${API_PORT}/api/v1`;
 
 export async function fetchCamerasGeoJSON(filters = {}) {
   const params = new URLSearchParams();

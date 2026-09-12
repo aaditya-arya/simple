@@ -6,8 +6,8 @@
 Single-command launcher that initializes and monitors all 4 system tiers:
  1. MediaMTX Streaming Server (RTSP :8554, HLS :8888)
  2. FFmpeg RTSP Traffic Stream Loop Publisher
- 3. FastAPI AI Backend & YOLOv8 Inference WebSocket (:8000)
- 4. React GIS Leaflet Frontend Dashboard (:5173)
+ 3. FastAPI AI Backend & YOLOv8 Inference WebSocket (:8005)
+ 4. React GIS Leaflet Frontend Dashboard (:5180)
 
 Usage:
   python run_all.py
@@ -31,6 +31,9 @@ MEDIAMTX_CONFIG = MEDIAMTX_DIR / mediamtx.yml
 VIDEO_PATH = ROOT_DIR / videos / traffic_sample.mp4
 BACKEND_DIR = ROOT_DIR / backend
 FRONTEND_DIR = ROOT_DIR / frontend
+
+BACKEND_PORT = 8005
+FRONTEND_PORT = 5180
 
 processes = []
 
@@ -125,9 +128,9 @@ def main():
     processes.append(ffmpeg_proc)
     print( -> FFmpeg Loop Stream: Active (Broadcasting to rtsp://127.0.0.1:8554/stream/1))
 
-    # 3. Start FastAPI Backend
-    print(\n[3/4] Launching FastAPI Backend & YOLOv8 Inference Engine...)
-    backend_cmd = [sys.executable, -m, uvicorn, app.main:app, --host, 0.0.0.0, --port, 8000]
+    # 3. Start FastAPI Backend on Port 8005
+    print(f\n[3/4] Launching FastAPI Backend & YOLOv8 Inference Engine (: {BACKEND_PORT})...)
+    backend_cmd = [sys.executable, -m, uvicorn, app.main:app, --host, 0.0.0.0, --port, str(BACKEND_PORT)]
     backend_proc = subprocess.Popen(
         backend_cmd,
         cwd=str(BACKEND_DIR),
@@ -136,44 +139,44 @@ def main():
     )
     processes.append(backend_proc)
 
-    if wait_for_port(127.0.0.1, 8000, timeout_sec=15):
-        print( -> FastAPI REST API: http://127.0.0.1:8000/docs [ONLINE])
-        print( -> WebSocket Engine: ws://127.0.0.1:8000/api/v1/ws/inference/1 [READY])
+    if wait_for_port(127.0.0.1, BACKEND_PORT, timeout_sec=15):
+        print(f -> FastAPI REST API: http://127.0.0.1:{BACKEND_PORT}/docs [ONLINE])
+        print(f -> WebSocket Engine: ws://127.0.0.1:{BACKEND_PORT}/api/v1/ws/inference/1 [READY])
     else:
-        print( -> FastAPI Backend starting up on port 8000...)
+        print(f -> FastAPI Backend starting up on port {BACKEND_PORT}...)
 
-    # 4. Start React Frontend
-    print(\n[4/4] Launching React GIS Leaflet Dashboard...)
+    # 4. Start React Frontend on Port 5180
+    print(f\n[4/4] Launching React GIS Leaflet Dashboard (: {FRONTEND_PORT})...)
     npm_cmd = npm.cmd if os.name == nt else npm
     frontend_proc = subprocess.Popen(
-        [npm_cmd, run, dev],
+        [npm_cmd, run, dev, --, --port, str(FRONTEND_PORT)],
         cwd=str(FRONTEND_DIR),
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL
     )
     processes.append(frontend_proc)
 
-    if wait_for_port(127.0.0.1, 5173, timeout_sec=15):
-        print( -> React Web Dashboard: http://localhost:5173 [ONLINE])
+    if wait_for_port(127.0.0.1, FRONTEND_PORT, timeout_sec=15):
+        print(f -> React Web Dashboard: http://localhost:{FRONTEND_PORT} [ONLINE])
     else:
-        print( -> Vite Frontend starting up on http://localhost:5173...)
+        print(f -> Vite Frontend starting up on http://localhost:{FRONTEND_PORT}...)
 
     # Summary Display
     print(\n + = * 70)
     print( ALL SERVICES ARE RUNNING! SYSTEM READY FOR DEMONSTRATION)
     print(= * 70)
-    print( * Web Dashboard: http://localhost:5173)
-    print( * API Documentation: http://localhost:8000/docs)
+    print(f * Web Dashboard: http://localhost:{FRONTEND_PORT})
+    print(f * API Documentation: http://localhost:{BACKEND_PORT}/docs)
     print( * RTSP Stream URL: rtsp://127.0.0.1:8554/stream/1)
     print( * HLS Browser Stream: http://127.0.0.1:8888/stream/1/index.m3u8)
-    print( * WebSocket Inference: ws://127.0.0.1:8000/api/v1/ws/inference/{camera_id})
+    print(f * WebSocket Inference: ws://127.0.0.1:{BACKEND_PORT}/api/v1/ws/inference/{{camera_id}})
     print(= * 70)
     print( 👉 Press [Ctrl+C] in this window to stop all services cleanly.)
     print(= * 70 + \n)
 
     time.sleep(1.5)
     try:
-        webbrowser.open(http://localhost:5173)
+        webbrowser.open(fhttp://localhost:{FRONTEND_PORT})
     except Exception:
         pass
 

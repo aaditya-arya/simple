@@ -146,7 +146,8 @@ export function LiveStreamModal({ camera, isOpen, onClose }) {
 
     const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
     const wsHost = sandboxHost === 'localhost' ? '127.0.0.1' : sandboxHost;
-    const wsUrl = `${wsProtocol}://${wsHost}:8000/api/v1/ws/inference/${cameraId}`;
+    const wsPort = import.meta.env.VITE_API_PORT || '8005';
+    const wsUrl = `${wsProtocol}://${wsHost}:${wsPort}/api/v1/ws/inference/${cameraId}`;
     let stopped = false;
     let retryDelay = 1000;
     let fallbackInterval = null;
@@ -690,7 +691,7 @@ export function LiveStreamModal({ camera, isOpen, onClose }) {
                 <div>
                   <strong style={{ color: '#2563eb' }}>WebSocket Pipeline:</strong>
                   <code style={{ marginLeft: '8px', color: '#334155', fontSize: '11px' }}>
-                    ws://{sandboxHost === 'localhost' ? '127.0.0.1' : sandboxHost}:8000/api/v1/ws/inference/{cameraId}
+                    ws://{sandboxHost === 'localhost' ? '127.0.0.1' : sandboxHost}:{import.meta.env.VITE_API_PORT || '8005'}/api/v1/ws/inference/{cameraId}
                   </code>
                 </div>
                 <span style={{

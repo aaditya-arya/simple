@@ -10,8 +10,18 @@ taskkill /F /IM mediamtx.exe 2>nul
 echo Terminating FFmpeg Streams...
 taskkill /F /IM ffmpeg.exe 2>nul
 
+echo Releasing Port 8005 (Backend)...
+for /f tokens=5 %%a in ('netstat -aon ^| findstr :8005 ^| findstr LISTENING') do (
+    taskkill /F /PID %%a 2>nul
+)
+
 echo Releasing Port 8000 (Backend)...
 for /f tokens=5 %%a in ('netstat -aon ^| findstr :8000 ^| findstr LISTENING') do (
+    taskkill /F /PID %%a 2>nul
+)
+
+echo Releasing Port 5180 (Frontend)...
+for /f tokens=5 %%a in ('netstat -aon ^| findstr :5180 ^| findstr LISTENING') do (
     taskkill /F /PID %%a 2>nul
 )
 

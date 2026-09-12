@@ -123,8 +123,8 @@ def verify_pipeline():
 
     # 4. FastAPI Backend Health Check
     print("\n[Step 4/4] Checking FastAPI Backend Health...")
-    backend_open = check_port("127.0.0.1", 8000)
-    print(f"  * FastAPI Backend Port 8000: {'[OK] OPEN' if backend_open else '[!] Not running yet (Run start_backend.bat)'}")
+    backend_open = check_port("127.0.0.1", 8005)
+    print(f"  * FastAPI Backend Port 8005: {'[OK] OPEN' if backend_open else '[!] Not running yet (Run start_backend.bat)'}")
 
     print("\n" + "=" * 70)
     print("   PIPELINE TRANSMISSION VERIFIED: YOLO COORDINATES ARE ACTIVE!")
