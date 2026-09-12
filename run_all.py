@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 =============================================================================
  Gujarat CCTV Registry & AI Video Analytics - Unified System Orchestrator
@@ -23,8 +23,11 @@ import signal
 import webbrowser
 import subprocess
 from pathlib import Path
+from dotenv import load_dotenv
 
 ROOT_DIR = Path(__file__).resolve().parent
+load_dotenv(ROOT_DIR / ".env")
+
 MEDIAMTX_DIR = ROOT_DIR / "mediamtx"
 MEDIAMTX_EXE = MEDIAMTX_DIR / "mediamtx.exe"
 MEDIAMTX_CONFIG = MEDIAMTX_DIR / "mediamtx.yml"
@@ -34,7 +37,7 @@ FRONTEND_DIR = ROOT_DIR / "frontend"
 
 BACKEND_PORT = 8005
 FRONTEND_PORT = 5180
-
+CAMERA_RTSP_URL = os.getenv("CAMERA_RTSP_URL", str(VIDEO_PATH))
 processes = []
 
 def check_port(host: str, port: int) -> bool:
@@ -87,9 +90,6 @@ def main():
     if not MEDIAMTX_EXE.exists():
         print(f"[ERROR] MediaMTX executable not found at: {MEDIAMTX_EXE}")
         return
-    if not VIDEO_PATH.exists():
-        print(f"[ERROR] Traffic sample video not found at: {VIDEO_PATH}")
-        return
 
     # 1. Start MediaMTX
     print("\n[1/4] Launching MediaMTX RTSP/HLS Streaming Server...")
@@ -108,22 +108,71 @@ def main():
         print(" -> MediaMTX started.")
 
     # 2. Start FFmpeg RTSP Loop Publisher
-    print("\n[2/4] Publishing Continuous RTSP Traffic Stream via FFmpeg...")
-    ffmpeg_cmd = [
-        "ffmpeg",
-        "-re",
-        "-stream_loop", "-1",
-        "-i", str(VIDEO_PATH),
-        "-c:v", "libx264",
-        "-preset", "ultrafast",
-        "-tune", "zerolatency",
-        "-b:v", "2000k",
-        "-pix_fmt", "yuv420p",
-        "-an",
-        "-f", "rtsp",
-        "-rtsp_transport", "tcp",
-        "rtsp://127.0.0.1:8554/stream/1",
-    ]
+    print("\n[2/4] Publishing RTSP Stream to MediaMTX Gateway...")
+    if CAMERA_RTSP_URL and CAMERA_RTSP_URL.startswith(("rtsp://", "rtsps://")):
+        print(f"  -> Ingesting Remote Live RTSP Stream: {CAMERA_RTSP_URL}")
+        ffmpeg_cmd = [
+            "ffmpeg",
+            "-rtsp_transport", "tcp",
+            "-i", CAMERA_RTSP_URL,
+            "-c:v", "copy",
+            "-an",
+            "-f", "rtsp",
+            "-rtsp_transport", "tcp",
+            "rtsp://127.0.0.1:8554/stream/1",
+        ]
+    elif CAMERA_RTSP_URL and CAMERA_RTSP_URL.startswith(("http://", "https://")):
+        print(f"  -> Ingesting Remote Live HTTP/MJPEG Stream: {CAMERA_RTSP_URL}")
+        ffmpeg_cmd = [
+            "ffmpeg",
+            "-re",
+            "-i", CAMERA_RTSP_URL,
+            "-c:v", "libx264",
+            "-preset", "ultrafast",
+            "-tune", "zerolatency",
+            "-pix_fmt", "yuv420p",
+            "-an",
+            "-f", "rtsp",
+            "-rtsp_transport", "tcp",
+            "rtsp://127.0.0.1:8554/stream/1",
+        ]
+    elif CAMERA_RTSP_URL and os.path.exists(CAMERA_RTSP_URL):
+        print(f"  -> Streaming Local Video: {CAMERA_RTSP_URL}")
+        ffmpeg_cmd = [
+            "ffmpeg",
+            "-re",
+            "-stream_loop", "-1",
+            "-i", CAMERA_RTSP_URL,
+            "-c:v", "libx264",
+            "-preset", "ultrafast",
+            "-tune", "zerolatency",
+            "-b:v", "2000k",
+            "-g", "12",
+            "-keyint_min", "12",
+            "-sc_threshold", "0",
+            "-pix_fmt", "yuv420p",
+            "-an",
+            "-f", "rtsp",
+            "-rtsp_transport", "tcp",
+            "rtsp://127.0.0.1:8554/stream/1",
+        ]
+    else:
+        print("  -> Notice: No file found at CAMERA_RTSP_URL. Generating synthetic live test stream...")
+        ffmpeg_cmd = [
+            "ffmpeg",
+            "-re",
+            "-f", "lavfi",
+            "-i", "testsrc=size=1280x720:rate=30",
+            "-c:v", "libx264",
+            "-preset", "ultrafast",
+            "-tune", "zerolatency",
+            "-pix_fmt", "yuv420p",
+            "-an",
+            "-f", "rtsp",
+            "-rtsp_transport", "tcp",
+            "rtsp://127.0.0.1:8554/stream/1",
+        ]
+
     ffmpeg_proc = subprocess.Popen(
         ffmpeg_cmd,
         cwd=str(ROOT_DIR),
@@ -131,14 +180,19 @@ def main():
         stderr=subprocess.DEVNULL
     )
     processes.append(ffmpeg_proc)
-    print(" -> FFmpeg Loop Stream: Active (Broadcasting to rtsp://127.0.0.1:8554/stream/1)")
+    print("  -> Stream Publisher: Active (Broadcasting to rtsp://127.0.0.1:8554/stream/1)")
 
     # 3. Start FastAPI Backend on Port 8005
     print(f"\n[3/4] Launching FastAPI Backend & YOLOv8 Inference Engine (: {BACKEND_PORT})...")
     backend_cmd = [sys.executable, "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", str(BACKEND_PORT)]
+    backend_env = {**os.environ, "SENTINEL_HOST": "127.0.0.1"}
+    if CAMERA_RTSP_URL:
+        backend_env["CAMERA_RTSP_URL"] = CAMERA_RTSP_URL
+
     backend_proc = subprocess.Popen(
         backend_cmd,
         cwd=str(BACKEND_DIR),
+        env=backend_env,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL
     )

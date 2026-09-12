@@ -17,10 +17,11 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
     
     # Sentinel Sandbox Live Stream Gateway Settings
-    SENTINEL_HOST: str = os.getenv("SENTINEL_HOST", "sentinel-grid.internal")
+    SENTINEL_HOST: str = os.getenv("SENTINEL_HOST", "127.0.0.1")
     SENTINEL_AUTH_TOKEN: str = os.getenv("SENTINEL_AUTH_TOKEN", "")
     SENTINEL_RTSP_USER: str = os.getenv("SENTINEL_RTSP_USER", "")
     SENTINEL_RTSP_PASS: str = os.getenv("SENTINEL_RTSP_PASS", "")
+    CAMERA_RTSP_URL: str = os.getenv("CAMERA_RTSP_URL", "")
     
     # CORS Origins for React.js frontend
     CORS_ORIGINS: list[str] = [

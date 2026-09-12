@@ -16,20 +16,25 @@ async def websocket_rtsp_inference_stream(websocket: WebSocket, camera_id: int):
     """
     await websocket.accept()
     
-    # Resolve RTSP endpoint for this camera
-    # For local testing or general cameras, fallback to active stream/1 if stream/camera_id is not published
-    effective_channel = camera_id if 1 <= camera_id <= 30 else 1
-    rtsp_url = f"rtsp://{settings.SENTINEL_HOST}:8554/stream/{effective_channel}"
+    # Priority 1: User-defined custom RTSP URL in .env
+    if settings.CAMERA_RTSP_URL:
+        rtsp_url = settings.CAMERA_RTSP_URL
+    else:
+        # Priority 2: Channel mapping (local vs remote Sentinel)
+        is_local = settings.SENTINEL_HOST in {"localhost", "127.0.0.1"}
+        effective_channel = 1 if is_local else (camera_id if 1 <= camera_id <= 30 else 1)
+        rtsp_url = f"rtsp://{settings.SENTINEL_HOST}:8554/stream/{effective_channel}"
 
-    db = SessionLocal()
-    try:
-        camera = db.query(Camera).filter(Camera.camera_id == camera_id).first()
-        if camera and camera.attributes:
-            rtsp_url = camera.attributes.get("sentinel_rtsp_url", rtsp_url)
-    except Exception:
-        pass
-    finally:
-        db.close()
+        db = SessionLocal()
+        try:
+            camera = db.query(Camera).filter(Camera.camera_id == camera_id).first()
+            if camera and camera.attributes and not is_local:
+                rtsp_url = camera.attributes.get("sentinel_rtsp_url", rtsp_url)
+                rtsp_url = rtsp_url.replace("sentinel-grid.internal", settings.SENTINEL_HOST)
+        except Exception:
+            pass
+        finally:
+            db.close()
 
     try:
         async for frame_data in rtsp_engine.stream_inference(camera_id, rtsp_url):

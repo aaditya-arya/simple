@@ -50,15 +50,10 @@ class RTSPStreamReader:
                         self.error_count = 0
                         print(f"📡 [RTSP Worker] Connected to live RTSP feed: {self.rtsp_url}", flush=True)
                     else:
-                        # Fallback to local sample video if physical RTSP is offline
-                        fallback_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "videos", "traffic_sample.mp4")
-                        if os.path.exists(fallback_path):
-                            self.cap = cv2.VideoCapture(fallback_path)
-                            self.is_connected = True
-                        else:
-                            self.is_connected = False
-                            time.sleep(2.0)
-                            continue
+                        self.cap = None
+                        self.is_connected = False
+                        time.sleep(2.0)
+                        continue
 
                 # Grab latest frame
                 grabbed, frame = self.cap.read()
@@ -158,12 +153,6 @@ class RTSPInferenceEngine:
         start_time = time.time()
         frame_counter = 0
 
-        # Kinematic state for smooth target vector tracking fallback
-        traj_x = 22.0
-        traj_y = 42.0
-        traj_speed = 0.85
-        direction = 1.0
-
         while True:
             frame_counter += 1
             loop_start = time.time()
@@ -226,51 +215,6 @@ class RTSPInferenceEngine:
                                 track_idx += 1
                 except Exception as inf_err:
                     print(f"⚠️ Inference exception: {inf_err}", flush=True)
-
-            # 2. Resilient Kinematic Vector Generator if frame is empty
-            if not detections:
-                traj_x += direction * traj_speed
-                if traj_x > 68.0:
-                    direction = -1.0
-                elif traj_x < 18.0:
-                    direction = 1.0
-
-                traj_y = 40.0 + 7.5 * math.sin(frame_counter * 0.09)
-                secondary_x = 76.0 - (traj_x - 18.0) * 1.1
-
-                detections = [
-                    {
-                        "track_id": 1,
-                        "class_name": "car",
-                        "confidence": 0.948,
-                        "x": int(traj_x * 7.68),
-                        "y": int(traj_y * 4.32),
-                        "w": 172,
-                        "h": 73,
-                        "x_pct": round(traj_x, 2),
-                        "y_pct": round(traj_y, 2),
-                        "w_pct": 22.5,
-                        "h_pct": 17.0,
-                        "plate_number": "GJ-01-AB-9824",
-                        "is_target": True
-                    },
-                    {
-                        "track_id": 2,
-                        "class_name": "truck",
-                        "confidence": 0.892,
-                        "x": int(max(5.0, min(80.0, secondary_x)) * 7.68),
-                        "y": int((50.0 - (traj_y - 40.0) * 0.4) * 4.32),
-                        "w": 153,
-                        "h": 90,
-                        "x_pct": round(max(5.0, min(80.0, secondary_x)), 2),
-                        "y_pct": round(50.0 - (traj_y - 40.0) * 0.4, 2),
-                        "w_pct": 20.0,
-                        "h_pct": 21.0,
-                        "plate_number": "GJ-01-TR-4581",
-                        "is_target": False
-                    }
-                ]
-                inference_latency_ms = 4.2
 
             # Compute real FPS
             elapsed = time.time() - loop_start
