@@ -1,6 +1,29 @@
 # CCTV Registry: Foundation
 
-This repository contains the database foundation for a centralized CCTV integration platform. It stores metadata, integration references, analytics events, alert state, camera health, and audit records; it does not store or stream video.
+This repository contains the full end-to-end platform for the Centralized Gujarat CCTV Registry & AI Video Analytics Platform (Model 1 + Model 3 VMS Federation).
+
+---
+
+## ⚡ Quick Start (1-Click Unified Launcher)
+
+To launch the entire platform (MediaMTX RTSP Server + Continuous Video Publisher + FastAPI YOLOv8 AI Backend + React GIS Leaflet Frontend) in a single command:
+
+```powershell
+# Method 1: Double-click or run batch script
+.\run_all.bat
+
+# Method 2: Run python orchestrator directly
+python run_all.py
+```
+
+- **Dashboard UI**: `http://localhost:5173` (opens automatically in browser)
+- **FastAPI Docs**: `http://localhost:8000/docs`
+- **RTSP Stream**: `rtsp://127.0.0.1:8554/stream/1`
+- **HLS Web Stream**: `http://127.0.0.1:8888/stream/1/index.m3u8`
+- **Verification Suite**: `.\verify_pipeline.bat` (validates RTSP ingestion & YOLOv8 bounding boxes)
+- **Stop All Services**: Press `Ctrl+C` in the launcher terminal or run `.\stop_all.bat`
+
+---
 
 ## Requirements
 
